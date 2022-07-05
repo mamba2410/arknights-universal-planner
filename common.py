@@ -1,4 +1,5 @@
 import numpy as np
+import numpy.typing as npt
 import requests
 import pandas
 from pandas import DataFrame
@@ -8,6 +9,7 @@ GAMEDATA_BASE = "https://raw.githubusercontent.com/Kengxxiao/ArknightsGameData/m
 ITEM_TABLE_LOC = "/gamedata/excel/item_table.json"
 STAGE_TABLE_LOC = "/gamedata/excel/stage_table.json"
 CRAFT_TABLE_LOC = "/gamedata/excel/building_data.json"
+CHAR_TABLE_LOC = "/gamedata/excel/character_table.json"
 PENGSTATS_BASE = "https://penguin-stats.io/PenguinStats/api/v2/result/matrix?"
 
 RERUN_SUBSTR = "_rep"
@@ -121,6 +123,12 @@ def get_craft_dict(lang="zh_CN"):
 
     return craftdict
 
+def get_char_dict(lang="zh_CN"):
+    response = requests.get(GAMEDATA_BASE+lang+CHAR_TABLE_LOC)
+    chardict = response.json()
+
+    return chardict
+
 
 def get_pengstats_df(show_closed_stages=True, server="CN"):
     url = PENGSTATS_BASE+f"server={server}"
@@ -220,6 +228,16 @@ def get_event_info(stage_names: dict) -> (dict, dict):
         event_names_rev[code] = identifier
 
     return event_names, event_names_rev
+
+def get_char_info(char_dict: dict) -> (dict, dict):
+    char_names = {} # char_id -> char_name
+    char_names_rev = {} # char_name -> char_id
+    
+    for k, v in char_dict.items():
+        char_names[k] = v["name"]
+        char_names_rev[v["name"]] = k
+       
+    return char_names, char_names_rev
 
 def get_material_ids(item_names_rev: dict, names: list):
     n_mats = len(names)
@@ -410,3 +428,96 @@ def print_stage_drops(stage_name: str, drop_matrix, stage_ids, item_ids, stage_n
         else:
             print("{}: {:.2f}%".format(n, v*100))
 
+            
+## Caveman brain function, but it works
+def sum_skill_slice(array: npt.NDArray) -> npt.NDArray:
+    total_ids = []
+    total_counts = []
+
+    for ids, counts in array:
+        for i in range(len(ids)):
+            total_ids.append(ids[i])
+            total_counts.append(counts[i])
+
+    unique_ids = np.unique(total_ids)
+    unique_counts = np.zeros(len(unique_ids))
+
+    for i in range(len(total_ids)):
+        idx = np.where(unique_ids == total_ids[i])[0]
+        unique_counts[idx] += total_counts[i]
+    
+    unique_ids = np.trim_zeros(unique_ids)
+    unique_counts = np.trim_zeros(unique_counts)
+    return np.array([unique_ids, unique_counts], dtype="uint32").transpose()
+
+
+## TODO: hardcoded sizes
+def get_all_char_all_costs(char_dict: dict, n_operators: int) -> (npt.NDArray, npt.NDArray,
+                                                npt.NDArray, npt.NDArray, npt.NDArray):
+    elite_costs = np.zeros((n_operators,2), dtype=[
+        ("item_id", "uint32", 3),
+        ("count", "uint32", 3),
+    ])
+
+    skill_costs = np.zeros((n_operators, 6), dtype=[
+        ("item_id", "uint32", 3),
+        ("count", "uint32", 3),
+    ])
+
+    mastery_costs = np.zeros((n_operators, 3, 3), dtype=[
+        ("item_id", "uint32", 3),
+        ("count", "uint32", 3),
+    ])
+
+    module_costs = np.zeros((n_operators, 2, 3), dtype=[
+        ("item_id", "uint32", 3),
+        ("count", "uint32", 3),
+    ])
+
+
+    char_ids = np.empty(n_operators, dtype="U32")
+    for char_idx, (char_id, v) in enumerate(char_dict.items()):
+        char_ids[char_idx] = char_id
+
+        ## Promotion costs
+        for p_idx, p in enumerate(v["phases"]):
+            cost_arr = p["evolveCost"]
+            if p["evolveCost"] is not None:
+                for c_idx, c in enumerate(cost_arr):
+                    elite_costs[char_idx][p_idx-1]["item_id"][c_idx] = c["id"]
+                    elite_costs[char_idx][p_idx-1]["count"][c_idx] = c["count"]
+
+        ## General skills
+        for s_idx, s in enumerate(v["allSkillLvlup"]):
+            if s["lvlUpCost"] is not None:
+                for c_idx, c in enumerate(s["lvlUpCost"]):
+                    skill_costs[char_idx][s_idx]["item_id"][c_idx] = c["id"]
+                    skill_costs[char_idx][s_idx]["count"][c_idx] = c["count"]
+
+        ## Skill masteries
+        for s_idx, s in enumerate(v["skills"]):
+            for m_idx, m in enumerate(s["levelUpCostCond"]):
+                if m["levelUpCost"] is not None:
+                    for c_idx, c in enumerate(m["levelUpCost"]):
+                        mastery_costs[char_idx][s_idx][m_idx]["item_id"][c_idx] = c["id"]
+                        mastery_costs[char_idx][s_idx][m_idx]["count"][c_idx] = c["count"]
+
+        ## TODO: modules
+        
+        
+    return char_ids, elite_costs, skill_costs, mastery_costs, module_costs
+
+def get_char_all_costs(name: str, char_names_rev: dict, char_ids: npt.NDArray,
+                 elite_costs: npt.NDArray, skill_costs: npt.NDArray,
+                 mastery_costs: npt.NDArray, module_costs: npt.NDArray
+                ) -> (npt.NDArray, npt.NDArray, npt.NDArray, npt.NDArray):
+    
+    char_id = char_names_rev[name]
+    char_idx = np.where(char_ids == char_id)[0][0]
+    
+    e_cost = elite_costs[char_idx]
+    s_cost = skill_costs[char_idx]
+    m_cost = mastery_costs[char_idx]
+    d_cost = module_costs[char_idx]
+    
+    return e_cost, s_cost, m_cost, d_cost
