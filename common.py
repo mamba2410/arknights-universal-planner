@@ -99,13 +99,14 @@ MATERIAL_NAMES = np.array([
 ], dtype="U32")
 
 LMD_ID = "4001"
+EXP_ID = "5001"
 PURE_GOLD_ID = "3003"
 TIER1_EXP_ID = "2001"
 TIER2_EXP_ID = "2002"
 TIER3_EXP_ID = "2003"
 TIER4_EXP_ID = "2004"
 
-COST_DTYPE = [("item_id", "U32", 5), ("count", "uint32", 5)]
+COST_DTYPE = [("item_id", "U32", 4), ("count", "int32", 4)]
 
 
 def get_item_dict(lang="zh_CN"):
@@ -279,8 +280,14 @@ def get_level_info(level_dict: dict) -> (npt.NDArray, npt.NDArray, npt.NDArray):
     xp_map = np.array(level_dict["characterExpMap"], dtype="int")
     lmd_map = np.array(level_dict["characterUpgradeCostMap"], dtype="int")
     elite_map = np.array(level_dict["evolveGoldCost"], dtype="int")
+    max_level_map_ = np.array(level_dict["maxLevel"], dtype=object, ndmin=1)
+    max_level_shape = (len(max_level_map_), len(max_level_map_[-1]))
+    max_level_map = np.zeros(max_level_shape, dtype="int")
+    for i, a in enumerate(max_level_map_):
+        for j, b in enumerate(a):
+            max_level_map[i][j] = b                  
     
-    return xp_map, lmd_map, elite_map
+    return xp_map, lmd_map, elite_map, max_level_map
     
 
 def get_material_ids(item_names_rev: dict, names: list):
@@ -500,10 +507,18 @@ def sum_skill_slice(array: npt.NDArray) -> npt.NDArray:
 def get_all_char_all_costs(char_dict: dict, module_dict: dict, level_dict: dict, n_operators: int) \
     -> (CostPacket, npt.NDArray):
     
-    level_xp_map, level_lmd_map, elite_lmd_map = get_level_info(level_dict)
+    level_exp_map, level_lmd_map, elite_lmd_map, max_level_map = get_level_info(level_dict)
     char_rarity_dict = get_char_rarities(char_dict)
-        
-    elite_costs = np.zeros((n_operators,2), dtype=COST_DTYPE)
+    
+    level_costs = np.empty(np.shape(level_lmd_map), dtype=COST_DTYPE)
+    for e in range(len(level_lmd_map)):
+        for l in range(len(level_lmd_map[-1])):
+            level_costs[e][l]["item_id"][0] = LMD_ID
+            level_costs[e][l]["count"][0]   = max(level_lmd_map[e][l], 0)
+            level_costs[e][l]["item_id"][1] = EXP_ID
+            level_costs[e][l]["count"][1]   = max(level_exp_map[e][l], 0)
+            
+    elite_costs = np.zeros((n_operators, 2), dtype=COST_DTYPE)
     skill_costs = np.zeros((n_operators, 6), dtype=COST_DTYPE)
     mastery_costs = np.zeros((n_operators, 3, 3), dtype=COST_DTYPE)
     module_costs = np.zeros((n_operators, 2, 3), dtype=COST_DTYPE)
@@ -568,7 +583,8 @@ def get_all_char_all_costs(char_dict: dict, module_dict: dict, level_dict: dict,
         
         char_n_modules[char_idx] += 1
         
-    return CostPacket(char_ids, elite_costs, skill_costs, mastery_costs, module_costs), char_n_modules
+    return CostPacket(char_ids, elite_costs, skill_costs, mastery_costs,
+                      module_costs, char_rarity_dict, level_costs, max_level_map), char_n_modules
 
 
 

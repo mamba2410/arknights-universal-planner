@@ -23,7 +23,8 @@ class OperatorPlan:
         
         self.name = name
         
-        level_range_invalid = level_range[0] < 1 or level_range[0] > 90
+        level_range_invalid = level_range[0] < 1 or level_range[0] > 90 or \
+                              level_range[1] < 1 or level_range[1] > 90
         
         elite_range_invalid = elite_range[0] < 0 or elite_range[0] > 2 or \
                               elite_range[1] < 0 or elite_range[1] > 2 or \
@@ -44,6 +45,7 @@ class OperatorPlan:
             
         self.elite_range = elite_range
         self.skill_range = skill_range
+        self.level_range = level_range
         
         for r in mastery_range:
             range_invalid =   r[0] < 0 or r[0] > 3 or \
@@ -68,20 +70,24 @@ class OperatorPlan:
     
         char_id = char_names_rev[self.name]
         char_idx = np.where(cost_packet.char_ids == char_id)[0][0]
+        rarity = cost_packet.char_rarities[char_id]
 
         e_cost = cost_packet.elite_costs[char_idx]
         s_cost = cost_packet.skill_costs[char_idx]
         m_cost = cost_packet.mastery_costs[char_idx]
         d_cost = cost_packet.module_costs[char_idx]
+        max_level = cost_packet.max_level_map[rarity]
     
-        ret = CostPacket([char_id], e_cost, s_cost, m_cost, d_cost)
+        ret = CostPacket([char_id], e_cost, s_cost, m_cost, d_cost,
+                         cost_packet.char_rarities, cost_packet.level_costs, max_level)
         return ret
 
+    ## TODO: Error checking in here
     def get_total_cost(self, cost_packet: CostPacket) -> npt.NDArray:
         
-        _, e_cost, s_cost, m_cost, d_cost = cost_packet.unpack()
+        _, e_cost, s_cost, m_cost, d_cost, _, l_cost, max_level = cost_packet.unpack()
         
-        mats_combined = np.zeros(2+6+9+2, dtype=ak.COST_DTYPE)
+        mats_combined = np.zeros(2+6+9+2+3, dtype=ak.COST_DTYPE)
         
         j = 0
         for v in e_cost[self.elite_range[0] : self.elite_range[1]]:
@@ -101,13 +107,23 @@ class OperatorPlan:
             for v in d_cost[i][self.module_range[i][0] : self.module_range[i][1]]:
                 mats_combined[j] = v
                 j += 1
+             
+        level_start = self.level_range[0]
+        for i in range(self.elite_range[0], self.elite_range[1]+1):
+            if self.elite_range[1] > i:
+                level_end = max_level[i]
+            else:
+                level_end = self.level_range[1]
+            mats_combined[j]["item_id"][0] = ak.LMD_ID
+            mats_combined[j]["count"][0] = np.sum(l_cost[i][level_start-1:level_end-1]["count"], axis=0)[0]
+            mats_combined[j]["item_id"][1] = ak.EXP_ID
+            mats_combined[j]["count"][1] = np.sum(l_cost[i][level_start-1:level_end-1]["count"], axis=0)[1]
+            j += 1
+                                    
+            
 
         mats_combined = ak.sum_skill_slice(mats_combined)
         return mats_combined
-    
-    def get_level_cost(self, char_rarity: npt.NDArray, xp_map: npt.NDArray,
-                       level_map: npt.NDArray) -> npt.NDArray:
-        level_cost = np.empty(1, dtype=ak.COST_DTYPE)
         
     
     def to_json(self) -> str:
