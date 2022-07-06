@@ -4,6 +4,7 @@ import requests
 import pandas
 from pandas import DataFrame
 import scipy
+from cost_packet import CostPacket
 
 GAMEDATA_BASE = "https://raw.githubusercontent.com/Kengxxiao/ArknightsGameData/master/"
 ITEM_TABLE_LOC = "/gamedata/excel/item_table.json"
@@ -469,8 +470,9 @@ def sum_skill_slice(array: npt.NDArray) -> npt.NDArray:
 
 
 ## TODO: hardcoded sizes
-def get_all_char_all_costs(char_dict: dict, module_dict: dict, n_operators: int) -> (npt.NDArray, npt.NDArray,
-                                                npt.NDArray, npt.NDArray, npt.NDArray, npt.NDArray):
+def get_all_char_all_costs(char_dict: dict, module_dict: dict, n_operators: int) \
+    -> (CostPacket, npt.NDArray):
+        
     elite_costs = np.zeros((n_operators,2), dtype=[
         ("item_id", "U32", 4),
         ("count", "uint32", 4),
@@ -545,20 +547,7 @@ def get_all_char_all_costs(char_dict: dict, module_dict: dict, n_operators: int)
         
         char_n_modules[char_idx] += 1
         
-    return char_ids, elite_costs, skill_costs, mastery_costs, module_costs, char_n_modules
+    return CostPacket(char_ids, elite_costs, skill_costs, mastery_costs, module_costs), char_n_modules
 
 
-def get_char_all_costs(name: str, char_names_rev: dict, char_ids: npt.NDArray,
-                 elite_costs: npt.NDArray, skill_costs: npt.NDArray,
-                 mastery_costs: npt.NDArray, module_costs: npt.NDArray
-                ) -> (npt.NDArray, npt.NDArray, npt.NDArray, npt.NDArray):
-    
-    char_id = char_names_rev[name]
-    char_idx = np.where(char_ids == char_id)[0][0]
-    
-    e_cost = elite_costs[char_idx]
-    s_cost = skill_costs[char_idx]
-    m_cost = mastery_costs[char_idx]
-    d_cost = module_costs[char_idx]
-    
-    return e_cost, s_cost, m_cost, d_cost
+
