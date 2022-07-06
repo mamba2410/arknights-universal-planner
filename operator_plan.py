@@ -85,12 +85,19 @@ class OperatorPlan:
     
     def pretty_print(self, item_names: dict, mats: npt.NDArray) -> None:
         print("{}:".format(self.name))
-        print("\tE{} -> E{}".format(self.elite_range[0], self.elite_range[1]))
-        print("\tSL{} -> SL{}".format(self.skill_range[0], self.skill_range[1]))
+        if self.elite_range[1] > self.elite_range[0]:
+            print("\tE{} -> E{}".format(self.elite_range[0], self.elite_range[1]))
+            
+        if self.skill_range[1] > self.skill_range[0]:
+            print("\tSL{} -> SL{}".format(self.skill_range[0], self.skill_range[1]))
+            
         for i in range(len(self.mastery_range)):
-            print("\tS{}M{} -> S{}M{}".format(i+1, self.mastery_range[i][0], i+1, self.mastery_range[i][1]))
+            if self.mastery_range[i][1] > self.mastery_range[i][0]:
+                print("\tS{}M{} -> S{}M{}".format(i+1, self.mastery_range[i][0],
+                                                  i+1, self.mastery_range[i][1]))
         for i in range(len(self.module_range)):
-            print("\tM{}L{} -> M{}L{}".format(i+1, self.module_range[i][0], i+1, self.module_range[i][1]))
+            if self.module_range[i][1] > self.module_range[i][0]:
+                print("\tM{}L{} -> M{}L{}".format(i+1, self.module_range[i][0], i+1, self.module_range[i][1]))
         
         print("Cost:")
         for i, c in mats:
