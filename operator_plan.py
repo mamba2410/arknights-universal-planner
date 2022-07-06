@@ -1,6 +1,7 @@
 import numpy as np
 import numpy.typing as npt
 import common as ak
+import json
 
 class OperatorPlan:
     def __init__( self,
@@ -47,3 +48,6 @@ class OperatorPlan:
 
         mats_combined = ak.sum_skill_slice(mats_combined)
         return mats_combined
+    
+    def to_json(self) -> str:
+        return json.dumps(self.__dict__)

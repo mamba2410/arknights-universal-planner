@@ -239,6 +239,16 @@ def get_char_info(char_dict: dict) -> (dict, dict):
        
     return char_names, char_names_rev
 
+def get_char_translations(char_dict: dict) -> (dict, dict):
+    char_names_en = {}
+    char_names_en_rev = {}
+    
+    for k, v in char_dict.items():
+        char_names_en[k] = v["appellation"]
+        char_names_en_rev[v["appellation"]] = k
+        
+    return char_names_en, char_names_en_rev
+
 def get_material_ids(item_names_rev: dict, names: list):
     n_mats = len(names)
     material_ids = np.empty(n_mats, dtype="U32")
