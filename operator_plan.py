@@ -28,8 +28,8 @@ class OperatorPlan:
                        m_cost: npt.NDArray, d_cost: npt.NDArray) -> npt.NDArray:
         
         mats_combined = np.zeros(2+6+9+2, dtype=[
-            ("item_id", "uint32", 3),
-            ("count", "uint32", 3),
+            ("item_id", "U32", 4),
+            ("count", "uint32", 4),
         ])
         
         j = 0
@@ -43,6 +43,11 @@ class OperatorPlan:
 
         for i in range(len(self.mastery_range)):
             for v in m_cost[i][self.mastery_range[i][0] : self.mastery_range[i][1]]:
+                mats_combined[j] = v
+                j += 1
+                
+        for i in range(len(self.module_range)):
+            for v in d_cost[i][self.module_range[i][0] : self.module_range[i][1]]:
                 mats_combined[j] = v
                 j += 1
 
