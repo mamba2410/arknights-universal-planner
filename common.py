@@ -12,6 +12,7 @@ STAGE_TABLE_LOC = "/gamedata/excel/stage_table.json"
 CRAFT_TABLE_LOC = "/gamedata/excel/building_data.json"
 CHAR_TABLE_LOC = "/gamedata/excel/character_table.json"
 MODULE_TABLE_LOC = "/gamedata/excel/uniequip_table.json"
+LEVEL_TABLE_LOC = "/gamedata/excel/gamedata_const.json"
 PENGSTATS_BASE = "https://penguin-stats.io/PenguinStats/api/v2/result/matrix?"
 
 RERUN_SUBSTR = "_rep"
@@ -104,6 +105,8 @@ TIER2_EXP_ID = "2002"
 TIER3_EXP_ID = "2003"
 TIER4_EXP_ID = "2004"
 
+COST_DTYPE = [("item_id", "U32", 5), ("count", "uint32", 5)]
+
 
 def get_item_dict(lang="zh_CN"):
     response = requests.get(GAMEDATA_BASE+lang+ITEM_TABLE_LOC)
@@ -136,6 +139,13 @@ def get_module_dict(lang="zh_CN"):
     moduledict = response.json()
 
     return moduledict
+
+def get_level_dict(lang="zh_CN"):
+    response = requests.get(GAMEDATA_BASE+lang+LEVEL_TABLE_LOC)
+    leveldict = response.json()
+
+    return leveldict
+    
 
 
 def get_pengstats_df(show_closed_stages=True, server="CN"):
@@ -256,6 +266,22 @@ def get_char_translations(char_dict: dict) -> (dict, dict):
         char_names_en_rev[v["appellation"]] = k
         
     return char_names_en, char_names_en_rev
+
+def get_char_rarities(char_dict: dict) -> dict:
+    char_rarities = {}
+    
+    for k, v in char_dict.items():
+        char_rarities[k] = v["rarity"]
+        
+    return char_rarities
+
+def get_level_info(level_dict: dict) -> (npt.NDArray, npt.NDArray, npt.NDArray):
+    xp_map = np.array(level_dict["characterExpMap"], dtype="int")
+    lmd_map = np.array(level_dict["characterUpgradeCostMap"], dtype="int")
+    elite_map = np.array(level_dict["evolveGoldCost"], dtype="int")
+    
+    return xp_map, lmd_map, elite_map
+    
 
 def get_material_ids(item_names_rev: dict, names: list):
     n_mats = len(names)
@@ -461,6 +487,7 @@ def sum_skill_slice(array: npt.NDArray) -> npt.NDArray:
     n_uniques = len(unique_ids)
     uniques = np.empty(n_uniques, dtype=[("item_id", "U32"), ("count", "uint32")])
     uniques["item_id"] = unique_ids
+    
 
     for i in range(len(total_ids)):
         idx = np.where(unique_ids == total_ids[i])[0]
@@ -470,42 +497,36 @@ def sum_skill_slice(array: npt.NDArray) -> npt.NDArray:
 
 
 ## TODO: hardcoded sizes
-def get_all_char_all_costs(char_dict: dict, module_dict: dict, n_operators: int) \
+def get_all_char_all_costs(char_dict: dict, module_dict: dict, level_dict: dict, n_operators: int) \
     -> (CostPacket, npt.NDArray):
+    
+    level_xp_map, level_lmd_map, elite_lmd_map = get_level_info(level_dict)
+    char_rarity_dict = get_char_rarities(char_dict)
         
-    elite_costs = np.zeros((n_operators,2), dtype=[
-        ("item_id", "U32", 4),
-        ("count", "uint32", 4),
-    ])
-
-    skill_costs = np.zeros((n_operators, 6), dtype=[
-        ("item_id", "U32", 4),
-        ("count", "uint32", 4),
-    ])
-
-    mastery_costs = np.zeros((n_operators, 3, 3), dtype=[
-        ("item_id", "U32", 4),
-        ("count", "uint32", 4),
-    ])
-
-    module_costs = np.zeros((n_operators, 2, 3), dtype=[
-        ("item_id", "U32", 4),
-        ("count", "uint32", 4),
-    ])
-
+    elite_costs = np.zeros((n_operators,2), dtype=COST_DTYPE)
+    skill_costs = np.zeros((n_operators, 6), dtype=COST_DTYPE)
+    mastery_costs = np.zeros((n_operators, 3, 3), dtype=COST_DTYPE)
+    module_costs = np.zeros((n_operators, 2, 3), dtype=COST_DTYPE)
 
     char_ids = np.empty(n_operators, dtype="U32")
     char_n_modules = np.zeros(n_operators, dtype="uint32")
     for char_idx, (char_id, v) in enumerate(char_dict.items()):
         char_ids[char_idx] = char_id
+        rarity = char_rarity_dict[char_id]
 
         ## Promotion costs
         for p_idx, p in enumerate(v["phases"]):
             cost_arr = p["evolveCost"]
             if p["evolveCost"] is not None:
-                for c_idx, c in enumerate(cost_arr):
+                c_idx = 0
+                for c in cost_arr:
                     elite_costs[char_idx][p_idx-1]["item_id"][c_idx] = c["id"]
                     elite_costs[char_idx][p_idx-1]["count"][c_idx] = c["count"]
+                    c_idx += 1
+                if elite_lmd_map[rarity][p_idx-1] > 0:
+                    elite_costs[char_idx][p_idx-1]["item_id"][c_idx] = LMD_ID
+                    elite_costs[char_idx][p_idx-1]["count"][c_idx] = elite_lmd_map[rarity][p_idx-1]
+                
 
         ## General skills
         for s_idx, s in enumerate(v["allSkillLvlup"]):
