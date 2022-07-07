@@ -480,27 +480,35 @@ def print_stage_drops(stage_name: str, drop_matrix, stage_ids, item_ids, stage_n
             print("{}: {:.2f}%".format(n, v*100))
 
             
-## Caveman brain function, but it works
+## Assume homogeneous array of COST_DTYPE
 def sum_skill_slice(array: npt.NDArray) -> npt.NDArray:
-    total_ids = []
-    total_counts = []
+    length = len(array) * len(array[0][0])
+    flat = np.empty(length, dtype=[("item_id", "U32"), ("count", "int32")])
 
-    for ids, counts in array:
-        for i in range(len(ids)):
-            total_ids.append(ids[i])
-            total_counts.append(counts[i])
+    j = 0
+    for thing in array:
+        thing_len = len(thing[0])
+        for k in range(thing_len):
+            flat[j] = (thing["item_id"][k], thing["count"][k])
+            j += 1
+    
+    new_array = collapse_item_list(flat)
+    
+    return new_array
 
-    unique_ids = np.unique(list(filter(None,total_ids)))
+def collapse_item_list(array: npt.NDArray) -> npt.NDArray:
+    unique_ids = np.unique(list(filter(None, array["item_id"])))
     n_uniques = len(unique_ids)
-    uniques = np.empty(n_uniques, dtype=[("item_id", "U32"), ("count", "uint32")])
+    uniques = np.empty(n_uniques, dtype=[("item_id", "U32"), ("count", "int32")])
     uniques["item_id"] = unique_ids
     
-
-    for i in range(len(total_ids)):
-        idx = np.where(unique_ids == total_ids[i])[0]
-        uniques["count"][idx] += total_counts[i]
-    
+    ## TODO: Better way to do this with np.unique returning indices
+    for item_id, count in array:
+        item_idx = np.where(unique_ids == item_id)[0]
+        uniques["count"][item_idx] += count
+        
     return uniques
+        
 
 
 ## TODO: hardcoded sizes

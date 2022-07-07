@@ -119,8 +119,6 @@ class OperatorPlan:
             mats_combined[j]["item_id"][1] = ak.EXP_ID
             mats_combined[j]["count"][1] = np.sum(l_cost[i][level_start-1:level_end-1]["count"], axis=0)[1]
             j += 1
-                                    
-            
 
         mats_combined = ak.sum_skill_slice(mats_combined)
         return mats_combined
