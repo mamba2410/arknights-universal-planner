@@ -5,7 +5,10 @@ import pandas
 from pandas import DataFrame
 import scipy
 from cost_packet import CostPacket
+import json
+import os
 
+LOCAL_BASE = "./akdata/"
 GAMEDATA_BASE = "https://raw.githubusercontent.com/Kengxxiao/ArknightsGameData/master/"
 ITEM_TABLE_LOC = "/gamedata/excel/item_table.json"
 STAGE_TABLE_LOC = "/gamedata/excel/stage_table.json"
@@ -36,15 +39,15 @@ TIER4_EXP_VALUE = 2000
 
 MATERIAL_NAMES = np.array([
 	"LMD",
-	"Pure Gold",
+	#"Pure Gold",
 
 	#"Distinction Certificate",
 	#"Commendation Certificate",
 
-	"Drill Battle Record",
-	"Frontline Battle Record",
-	"Tactical Battle Record",
-	"Strategic Battle Record",
+	#"Drill Battle Record",
+	#"Frontline Battle Record",
+	#"Tactical Battle Record",
+	#"Strategic Battle Record",
 
 	"Skill Summary - 1",
 	"Skill Summary - 2",
@@ -98,6 +101,33 @@ MATERIAL_NAMES = np.array([
 	"Cutting Fluid Solution",
 ], dtype="U32")
 
+CHIP_NAMES = np.array([
+    "Vanguard Chip",
+    "Vanguard Chip Pack",
+    "Vanguard Dualchip",
+    "Guard Chip",
+    "Guard Chip Pack",
+    "Guard Dualchip",
+    "Defender Chip",
+    "Defender Chip Pack",
+    "Defender Dualchip",
+    "Sniper Chip",
+    "Sniper Chip Pack",
+    "Sniper Dualchip",
+    "Caster Chip",
+    "Caster Chip Pack",
+    "Caster Dualchip",
+    "Medic Chip",
+    "Medic Chip Pack",
+    "Medic Dualchip",
+    "Supporter Chip",
+    "Supporter Chip Pack",
+    "Supporter Dualchip",
+    "Specialist Chip",
+    "Specialist Chip Pack",
+    "Specialist Dualchip",
+], dtype="U32")
+
 LMD_ID = "4001"
 EXP_ID = "5001"
 PURE_GOLD_ID = "3003"
@@ -108,44 +138,43 @@ TIER4_EXP_ID = "2004"
 
 COST_DTYPE = [("item_id", "U32", 4), ("count", "int32", 4)]
 
+def get_dict(remote_base: str, lang: str, table: str, local: bool, local_base):
+    local_table = local_base+lang+table
+    #local_table_dir = os.path.dirname(os.path.realpath(local_table))
+    local_table_dir = os.path.dirname(local_table)
+    
+    if not os.path.exists(local_table_dir):
+        os.makedirs(local_table_dir, exist_ok=True)
+        
+    if local and os.path.exists(local_table):
+        print("Reading from local file")
+        with open(local_table, "r") as f:
+            ret = json.load(f)
+    else:
+        with open(local_table, "w") as f:
+            print("Reading from remote")
+            response = requests.get(remote_base+lang+table)
+            ret = response.json()
+            json.dump(ret, f)
+    return ret
 
-def get_item_dict(lang="zh_CN"):
-    response = requests.get(GAMEDATA_BASE+lang+ITEM_TABLE_LOC)
-    itemdict = response.json()
+def get_item_dict(lang="zh_CN", local=False):
+    return get_dict(GAMEDATA_BASE, lang, ITEM_TABLE_LOC, local, LOCAL_BASE)
 
-    return itemdict
+def get_stage_dict(lang="zh_CN", local=False):
+    return get_dict(GAMEDATA_BASE, lang, STAGE_TABLE_LOC, local, LOCAL_BASE)
 
+def get_craft_dict(lang="zh_CN", local=False):
+    return get_dict(GAMEDATA_BASE, lang, CRAFT_TABLE_LOC, local, LOCAL_BASE)
 
-def get_stage_dict(lang="zh_CN"):
-    response = requests.get(GAMEDATA_BASE+lang+STAGE_TABLE_LOC)
-    stagedict = response.json()
+def get_char_dict(lang="zh_CN", local=False):
+    return get_dict(GAMEDATA_BASE, lang, CHAR_TABLE_LOC, local, LOCAL_BASE)
 
-    return stagedict
+def get_module_dict(lang="zh_CN", local=False):
+    return get_dict(GAMEDATA_BASE, lang, MODULE_TABLE_LOC, local, LOCAL_BASE)
 
-
-def get_craft_dict(lang="zh_CN"):
-    response = requests.get(GAMEDATA_BASE+lang+CRAFT_TABLE_LOC)
-    craftdict = response.json()
-
-    return craftdict
-
-def get_char_dict(lang="zh_CN"):
-    response = requests.get(GAMEDATA_BASE+lang+CHAR_TABLE_LOC)
-    chardict = response.json()
-
-    return chardict
-
-def get_module_dict(lang="zh_CN"):
-    response = requests.get(GAMEDATA_BASE+lang+MODULE_TABLE_LOC)
-    moduledict = response.json()
-
-    return moduledict
-
-def get_level_dict(lang="zh_CN"):
-    response = requests.get(GAMEDATA_BASE+lang+LEVEL_TABLE_LOC)
-    leveldict = response.json()
-
-    return leveldict
+def get_level_dict(lang="zh_CN", local=False):
+    return get_dict(GAMEDATA_BASE, lang, LEVEL_TABLE_LOC, local, LOCAL_BASE)
     
 
 
