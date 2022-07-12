@@ -433,6 +433,18 @@ def print_stage_drops(stage_name: str, drop_matrix, stage_ids, item_ids, stage_n
         else:
             print("{}: {:.2f}%".format(n, v*100))
 
+def get_main_drops(drop_matrix: npt.NDArray, msv: npt.NDArray, material_ids: npt.NDArray) -> npt.NDArray:
+    n_stages = len(drop_matrix)
+    main_mats = np.empty(n_stages, dtype="U32")
+
+    for i, drops in enumerate(drop_matrix):
+        idx = np.argmax(drops*msv)
+        main_mats[i] = material_ids[idx]
+
+    return main_mats
+        
+
+
             
 ## Assume homogeneous array of COST_DTYPE
 def sum_skill_slice(array: npt.NDArray) -> npt.NDArray:
