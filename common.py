@@ -7,6 +7,7 @@ import scipy
 from cost_packet import CostPacket
 import json
 import os
+import materials
 
 LOCAL_BASE = "./akdata/"
 GAMEDATA_BASE = "https://raw.githubusercontent.com/Kengxxiao/ArknightsGameData/master/"
@@ -37,108 +38,10 @@ TIER2_EXP_VALUE = 400
 TIER3_EXP_VALUE = 1000
 TIER4_EXP_VALUE = 2000
 
-MATERIAL_NAMES = np.array([
-	"LMD",
-	#"Pure Gold",
-
-	#"Distinction Certificate",
-	#"Commendation Certificate",
-
-	#"Drill Battle Record",
-	#"Frontline Battle Record",
-	#"Tactical Battle Record",
-	#"Strategic Battle Record",
-
-	"Skill Summary - 1",
-	"Skill Summary - 2",
-	"Skill Summary - 3",
-
-	"Orirock",
-	"Orirock Cube",
-	"Orirock Cluster",
-	"Orirock Concentration",
-	"Damaged Device",
-	"Device",
-	"Integrated Device",
-	"Optimized Device",
-	"Ester",
-	"Polyester",
-	"Polyester Pack",
-	"Polyester Lump",
-	"Sugar Substitute",
-	"Sugar",
-	"Sugar Pack",
-	"Sugar Lump",
-	"Oriron Shard",
-	"Oriron",
-	"Oriron Cluster",
-	"Oriron Block",
-	"Diketon",
-	"Polyketon",
-	"Aketon",
-	"Keton Colloid",
-	"Loxic Kohl",
-	"White Horse Kohl",
-	"Manganese Ore",
-	"Manganese Trihydrate",
-	"Grindstone",
-	"Grindstone Pentahydrate",
-	"RMA70-12",
-	"RMA70-24",
-	"Polymerization Preparation",
-	"Bipolar Nanoflake",
-	"D32 Steel",
-	"Coagulating Gel",
-	"Polymerized Gel",
-	"Incandescent Alloy",
-	"Incandescent Alloy Block",
-	"Crystalline Component",
-	"Crystalline Circuit",
-	"Crystalline Electronic Unit",
-	"Semi-Synthetic Solvent",
-	"Refined Solvent",
-	"Compound Cutting Fluid",
-	"Cutting Fluid Solution",
-], dtype="U32")
-
-CHIP_NAMES = np.array([
-    "Vanguard Chip",
-    "Vanguard Chip Pack",
-    "Vanguard Dualchip",
-    "Guard Chip",
-    "Guard Chip Pack",
-    "Guard Dualchip",
-    "Defender Chip",
-    "Defender Chip Pack",
-    "Defender Dualchip",
-    "Sniper Chip",
-    "Sniper Chip Pack",
-    "Sniper Dualchip",
-    "Caster Chip",
-    "Caster Chip Pack",
-    "Caster Dualchip",
-    "Medic Chip",
-    "Medic Chip Pack",
-    "Medic Dualchip",
-    "Supporter Chip",
-    "Supporter Chip Pack",
-    "Supporter Dualchip",
-    "Specialist Chip",
-    "Specialist Chip Pack",
-    "Specialist Dualchip",
-], dtype="U32")
-
-LMD_ID = "4001"
-EXP_ID = "5001"
-PURE_GOLD_ID = "3003"
-TIER1_EXP_ID = "2001"
-TIER2_EXP_ID = "2002"
-TIER3_EXP_ID = "2003"
-TIER4_EXP_ID = "2004"
-
 COST_DTYPE = [("item_id", "U32", 4), ("count", "int32", 4)]
+MATERIAL_DTYPE = [("item_id", "U32"), ("count", "int32")]
 
-def get_dict(remote_base: str, lang: str, table: str, local: bool, local_base):
+def get_dict(remote_base: str, lang: str, table: str, local: bool, local_base: str) -> dict:
     local_table = local_base+lang+table
     #local_table_dir = os.path.dirname(os.path.realpath(local_table))
     local_table_dir = os.path.dirname(local_table)
@@ -151,10 +54,10 @@ def get_dict(remote_base: str, lang: str, table: str, local: bool, local_base):
         with open(local_table, "r") as f:
             ret = json.load(f)
     else:
+        print("Reading from remote")
+        response = requests.get(remote_base+lang+table)
+        ret = response.json()
         with open(local_table, "w") as f:
-            print("Reading from remote")
-            response = requests.get(remote_base+lang+table)
-            ret = response.json()
             json.dump(ret, f)
     return ret
 
@@ -175,8 +78,6 @@ def get_module_dict(lang="zh_CN", local=False):
 
 def get_level_dict(lang="zh_CN", local=False):
     return get_dict(GAMEDATA_BASE, lang, LEVEL_TABLE_LOC, local, LOCAL_BASE)
-    
-
 
 def get_pengstats_df(show_closed_stages=True, server="CN"):
     url = PENGSTATS_BASE+f"server={server}"
@@ -361,14 +262,14 @@ def get_event_ids(event: str, psdf: DataFrame, event_names_rev: dict):
     return all_stage_ids[event_indices]
 
 
-def get_craft_matrix(craft_dict: dict, material_ids):
+def get_craft_matrix(craft_dict: dict, material_ids, item_names_rev):
     n_mats = len(material_ids)
-    lmd_idx = np.where(material_ids == LMD_ID)[0]
-    pure_gold_idx = np.where(material_ids == PURE_GOLD_ID)[0]
-    tier1_exp_idx = np.where(material_ids == TIER1_EXP_ID)[0]
-    tier2_exp_idx = np.where(material_ids == TIER2_EXP_ID)[0]
-    tier3_exp_idx = np.where(material_ids == TIER3_EXP_ID)[0]
-    tier4_exp_idx = np.where(material_ids == TIER4_EXP_ID)[0]
+    lmd_idx = np.where(material_ids == materials.LMD_ID)[0]
+    pure_gold_idx = np.where(material_ids == materials.PURE_GOLD_ID)[0]
+    tier1_exp_idx = np.where(material_ids == materials.TIER1_EXP_ID)[0]
+    tier2_exp_idx = np.where(material_ids == materials.TIER2_EXP_ID)[0]
+    tier3_exp_idx = np.where(material_ids == materials.TIER3_EXP_ID)[0]
+    tier4_exp_idx = np.where(material_ids == materials.TIER4_EXP_ID)[0]
 
     craft_matrix = np.zeros((n_mats, n_mats))
     subprod_matrix = np.zeros((n_mats, n_mats))
@@ -402,7 +303,31 @@ def get_craft_matrix(craft_dict: dict, material_ids):
             subprod_matrix[item_idx,s_idx] = float(s["weight"])
             
         subprod_matrix[item_idx] /= total_w
-
+        
+    ## Manual recipes
+    
+    chip_t1_ids = get_material_ids(item_names_rev, materials.chip_t1)
+    chip_t2_ids = get_material_ids(item_names_rev, materials.chip_t2)
+    dualchip_ids = get_material_ids(item_names_rev, materials.dualchips)
+    _, chip_t1_indices, _ = np.intersect1d(material_ids, chip_t1_ids, return_indices=True)
+    _, chip_t2_indices, _ = np.intersect1d(material_ids, chip_t2_ids, return_indices=True)
+    _, dualchip_indices, _ = np.intersect1d(material_ids, dualchip_ids, return_indices=True)
+    
+    ## remove swapping T1 chip types
+    for i in chip_t1_indices:
+        for j in range(n_mats):
+            #craft_matrix[i][j] = 0
+            craft_matrix[j][i] = 0
+    
+    ## remove swapping T2 chip types
+    for i in chip_t2_indices:
+        for j in range(n_mats):
+            #craft_matrix[i][j] = 0
+            craft_matrix[j][i] = 0
+        
+    ## add dualchip crafting
+    for i, k in enumerate(dualchip_indices):
+        craft_matrix[k][chip_t2_indices[i]] = 2
 
     return craft_matrix, subprod_matrix
 
@@ -411,7 +336,7 @@ def get_drop_matrix(psdf: DataFrame, stage_ids, item_ids, stage_lmd: dict):
     n_stages = len(stage_ids)
     n_items = len(item_ids)
 
-    lmd_idx = np.where(item_ids == LMD_ID)[0]
+    lmd_idx = np.where(item_ids == materials.LMD_ID)[0]
 
     drop_matrix = np.zeros((n_stages, n_items))
     coeff_matrix = np.zeros(n_items)
@@ -511,6 +436,7 @@ def print_stage_drops(stage_name: str, drop_matrix, stage_ids, item_ids, stage_n
             
 ## Assume homogeneous array of COST_DTYPE
 def sum_skill_slice(array: npt.NDArray) -> npt.NDArray:
+    ## TODO: use np.flatnonzero?
     length = len(array) * len(array[0][0])
     flat = np.empty(length, dtype=[("item_id", "U32"), ("count", "int32")])
 
@@ -550,9 +476,9 @@ def get_all_char_all_costs(char_dict: dict, module_dict: dict, level_dict: dict,
     level_costs = np.empty(np.shape(level_lmd_map), dtype=COST_DTYPE)
     for e in range(len(level_lmd_map)):
         for l in range(len(level_lmd_map[-1])):
-            level_costs[e][l]["item_id"][0] = LMD_ID
+            level_costs[e][l]["item_id"][0] = materials.LMD_ID
             level_costs[e][l]["count"][0]   = max(level_lmd_map[e][l], 0)
-            level_costs[e][l]["item_id"][1] = EXP_ID
+            level_costs[e][l]["item_id"][1] = materials.EXP_ID
             level_costs[e][l]["count"][1]   = max(level_exp_map[e][l], 0)
             
     elite_costs = np.zeros((n_operators, 2), dtype=COST_DTYPE)
@@ -576,10 +502,9 @@ def get_all_char_all_costs(char_dict: dict, module_dict: dict, level_dict: dict,
                     elite_costs[char_idx][p_idx-1]["count"][c_idx] = c["count"]
                     c_idx += 1
                 if elite_lmd_map[rarity][p_idx-1] > 0:
-                    elite_costs[char_idx][p_idx-1]["item_id"][c_idx] = LMD_ID
+                    elite_costs[char_idx][p_idx-1]["item_id"][c_idx] = materials.LMD_ID
                     elite_costs[char_idx][p_idx-1]["count"][c_idx] = elite_lmd_map[rarity][p_idx-1]
                 
-
         ## General skills
         for s_idx, s in enumerate(v["allSkillLvlup"]):
             if s["lvlUpCost"] is not None:

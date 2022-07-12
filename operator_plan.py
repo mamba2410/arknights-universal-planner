@@ -1,6 +1,7 @@
 import numpy as np
 import numpy.typing as npt
 import common as ak
+import materials
 import json
 import copy
 from cost_packet import CostPacket
@@ -114,9 +115,9 @@ class OperatorPlan:
                 level_end = max_level[i]
             else:
                 level_end = self.level_range[1]
-            mats_combined[j]["item_id"][0] = ak.LMD_ID
+            mats_combined[j]["item_id"][0] = materials.LMD_ID
             mats_combined[j]["count"][0] = np.sum(l_cost[i][level_start-1:level_end-1]["count"], axis=0)[0]
-            mats_combined[j]["item_id"][1] = ak.EXP_ID
+            mats_combined[j]["item_id"][1] = materials.EXP_ID
             mats_combined[j]["count"][1] = np.sum(l_cost[i][level_start-1:level_end-1]["count"], axis=0)[1]
             j += 1
 
