@@ -254,12 +254,21 @@ def get_main_and_perm_stage_ids(psdf: DataFrame):
     return main_stage_ids
 
 
-def get_event_ids(event: str, psdf: DataFrame, event_names_rev: dict):
+def get_event_ids(event: str, psdf: DataFrame, event_names_rev: dict, remove_permanent=True, remove_reruns=False):
     all_stage_ids = np.array(np.unique(psdf.stageId), dtype="U32")
     event_substr = event_names_rev[event]
     event_indices = np.flatnonzero(np.core.defchararray.find(all_stage_ids,event_substr)!=-1)
+    matching_ids = all_stage_ids[event_indices]
 
-    return all_stage_ids[event_indices]
+    if remove_permanent:
+        non_perm_indices = np.flatnonzero(np.core.defchararray.find(matching_ids,PERM_SUBSTR)==-1)
+        matching_ids = matching_ids[non_perm_indices]
+
+    if remove_reruns:
+        non_rerun_indices = np.flatnonzero(np.core.defchararray.find(matching_ids,RERUN_SUBSTR)==-1)
+        matching_ids = matching_ids[non_rerun_indices]
+
+    return matching_ids
 
 
 def get_craft_matrix(craft_dict: dict, material_ids, item_names_rev):
@@ -367,7 +376,7 @@ def get_san_cost(stage_ids, stage_san_cost: dict):
     return stage_san
 
 
-def filter_drop_matrix(drop_matrix, stage_san):
+def filter_drop_matrix(drop_matrix, stage_san, stage_ids):
     drop_sum = np.sum(drop_matrix, axis=1)
     has_drops = np.where(drop_sum > 0)[0]
     has_san = np.where(stage_san > 0)[0]
@@ -375,7 +384,16 @@ def filter_drop_matrix(drop_matrix, stage_san):
     #indices = np.unique(np.concatenate((has_drops, has_san)))
     indices = np.intersect1d(has_drops, has_san)
 
-    return drop_matrix[indices], stage_san[indices]
+    return drop_matrix[indices], stage_san[indices], stage_ids[indices]
+
+def drop_matrix_cutoff(drop_matrix: npt.NDArray, threshold: float) -> npt.NDArray:
+
+    for i in range(len(drop_matrix)):
+        for j in range(len(drop_matrix[i])):
+            if drop_matrix[i][j] < threshold:
+                drop_matrix[i][j] = 0
+    
+    return drop_matrix
 
 
 def get_craft_constraint_matrix(craft_matrix, subprod_matrix, byprod_rate):
