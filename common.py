@@ -26,6 +26,10 @@ LMD_EXP_3STAR_MULT = 1.2
 COST_DTYPE = [("item_id", "U32", 4), ("count", "int32", 4)]
 MATERIAL_DTYPE = [("item_id", "U32"), ("count", "int32")]
 
+DAILY_SAN = 240 + 60
+WEEKLY_SAN = DAILY_SAN*7 + 200
+SAN_PER_OP = 135
+
 
 def get_dict(remote_base: str, lang: str, table: str, local: bool, local_base: str) -> dict:
     local_table = local_base+lang+table
