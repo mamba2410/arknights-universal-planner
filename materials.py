@@ -71,10 +71,16 @@ dualchips = np.array([
 
 MATERIAL_NAMES = np.array([
 	"LMD",
+    "Pure Gold",
 
 	"Skill Summary - 1",
 	"Skill Summary - 2",
 	"Skill Summary - 3",
+
+    "Drill Battle Record",
+    "Frontline Battle Record",
+    "Tactical Battle Record",
+    "Strategic Battle Record",
 
 	"Orirock",
 	"Orirock Cube",
